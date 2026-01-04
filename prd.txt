@@ -1,0 +1,52 @@
+# Agency: Lead Search & Outreach
+
+## Goal
+- Find qualified leads via web search, capture them into the correct Notion database (user-approved), and send outreach emails through Resend with user approval on database selection and send steps.
+
+## Agents (Agency Swarm v1.0.0)
+1) LeadSearchAgent (entry point)
+- Role: Research leads based on user-specified ICP/keywords/regions, validate sources, and prepare structured lead records.
+- Tools: WebSearchTool (builtin) for discovery; delegates database writing and email to OutreachAgent.
+- Workflow: Collect user goal/ICP → use WebSearchTool → summarize candidate leads with confidence and source links → ask user to approve → hand off approved leads to OutreachAgent.
+
+2) OutreachAgent
+- Role: Owns Notion DB operations and email sending; ensures user approval for database choice and outbound email.
+- Tools: NotionDatabaseTool (custom) limited to DB actions; ResendEmailTool (custom) for single and batch sends plus basic management.
+- Workflow: List Notion databases → ask user to confirm which DB stores leads → read existing leads to avoid duplicates → create/update lead records → draft outreach emails → seek user approval for send → send via Resend (single/batch) → log status back to Notion.
+
+## Tools (planned)
+- WebSearchTool (builtin) — LeadSearchAgent
+- NotionDatabaseTool — OutreachAgent
+  - list_databases, list_database_pages, query_database, fetch_page, create_page, update_page
+  - Input: API key from env; flexible property JSON for create/update.
+- ResendEmailTool — OutreachAgent
+  - send_email, send_batch, get_email, update_email, cancel_email, list_emails, list_attachments, get_attachment
+  - Inputs: from, to, subject, html/text; batch accepts list; update supports scheduled_at; API key from env.
+
+## Data / Storage
+- Notion DB chosen by user at runtime; OutreachAgent must list DBs and store the confirmed DB id in context for subsequent operations.
+- Lead records: recommended fields — Name, Company, Role, Email, Source URL, Status, Last Contacted, Notes.
+
+## Communication Flow
+- Entry: LeadSearchAgent
+- Flows: (LeadSearchAgent → OutreachAgent), (OutreachAgent → LeadSearchAgent) for coordination and dedupe checks.
+
+## Approvals / Safety
+- User must approve: selected Notion DB, lead list before storing, and any email sends (single or batch).
+- No API keys in prompts; load from environment.
+
+## API Keys Needed
+- OPENAI_API_KEY (agency core)
+- NOTION_API_KEY
+- RESEND_API_KEY
+
+## Testing Plan (5 queries)
+1) “Find 5 SaaS leads in fintech in EU; store and show me before emailing.” — expect web search, draft leads, user approval, Notion insert, email draft + approval.
+2) “List my Notion DBs and pick the one named Leads; add one manual lead.” — expect DB list, user confirmation, create page.
+3) “Send a batch of two test emails to these addresses…” — expect approval then Resend batch send and status log.
+4) “Update the scheduled send time for email <id> to 10 minutes from now.” — expect Resend update call.
+5) “Cancel email <id> and list attachments for <email id>.” — expect cancel + attachment list.
+
+## Open Items
+- Confirm default sender info for Resend (from name/address) and any rate limits.
+- Confirm Notion lead DB property schema (if we should map specific property names).

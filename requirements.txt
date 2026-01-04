@@ -1,0 +1,4 @@
+agency-swarm[fastapi]>=1.2.1
+fastapi
+uvicorn
+resend>=2.0.0
